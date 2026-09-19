@@ -3,12 +3,19 @@ import { Plus } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import BaseIcon from '@/components/base/BaseIcon.vue'
+import OdometerNumber from '@/components/base/OdometerNumber.vue'
 import ScheduleEntry from '@/components/day/ScheduleEntry.vue'
 import { observeInView } from '@/composables/useInView'
 import type { ScheduleEntry as Entry } from '@/types/api'
 import { timeToMinutes } from '@/utils/date'
 
-const props = defineProps<{ entries: Entry[]; editable: boolean; showNow: boolean }>()
+const props = defineProps<{
+  entries: Entry[]
+  editable: boolean
+  showNow: boolean
+  /** minutes since midnight that replace the real clock (used by the About demo) */
+  clock?: number
+}>()
 const emit = defineEmits<{ add: []; edit: [entry: Entry]; remove: [id: number] }>()
 
 type Item =
@@ -16,7 +23,17 @@ type Item =
   | { kind: 'now'; key: string; minutes: number }
 
 const now = ref(new Date())
-let clock: ReturnType<typeof setInterval> | undefined
+let clockTimer: ReturnType<typeof setTimeout> | undefined
+
+function schedule() {
+  clockTimer = setTimeout(
+    () => {
+      now.value = new Date()
+      schedule()
+    },
+    60_000 - (Date.now() % 60_000) + 50,
+  )
+}
 
 const root = ref<HTMLElement>()
 const inView = ref(false)
@@ -25,7 +42,7 @@ const cascade = ref(true)
 let stopObserving: (() => void) | undefined
 
 onMounted(() => {
-  clock = setInterval(() => (now.value = new Date()), 60_000)
+  if (props.clock === undefined) schedule()
   if (root.value) {
     stopObserving = observeInView(
       root.value,
@@ -41,14 +58,15 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  clearInterval(clock)
+  clearTimeout(clockTimer)
   stopObserving?.()
 })
 
-const nowMinutes = computed(() => now.value.getHours() * 60 + now.value.getMinutes())
-const nowLabel = computed(
-  () => `${String(now.value.getHours()).padStart(2, '0')}:${String(now.value.getMinutes()).padStart(2, '0')}`,
-)
+const nowMinutes = computed(() => props.clock ?? now.value.getHours() * 60 + now.value.getMinutes())
+const nowLabel = computed(() => {
+  const m = Math.floor(nowMinutes.value)
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+})
 
 const items = computed<Item[]>(() => {
   const list: Item[] = [...props.entries]
@@ -81,9 +99,10 @@ const count = computed(() => props.entries.length)
     <TransitionGroup tag="ul" name="entry" class="timeline__list">
       <template v-for="(item, index) in items" :key="item.key">
         <li v-if="item.kind === 'now'" :key="item.key" class="tl-now" :style="{ '--gap': gapBefore(index) }">
-          <span class="tl-now__time label tnum">{{ nowLabel }}</span>
-          <span class="tl-rail" aria-hidden="true"><span class="tl-now__dot" /></span>
-          <span class="tl-now__line"><span class="label">Сейчас</span></span>
+          <div class="tl-now__bar">
+            <span class="tl-now__time tnum"><OdometerNumber :value="nowLabel" :spin="false" /></span>
+            <span class="tl-now__label">сейчас</span>
+          </div>
         </li>
         <ScheduleEntry
           v-else
@@ -94,6 +113,8 @@ const count = computed(() => props.entries.length)
           :index="cascade ? index : 0"
           :is-first="index === 0"
           :is-last="index === items.length - 1 && !editable"
+          :live="showNow"
+          :reached="!showNow || item.minutes <= nowMinutes"
           @edit="emit('edit', $event)"
           @remove="emit('remove', $event)"
         />
@@ -103,7 +124,7 @@ const count = computed(() => props.entries.length)
         <span class="tl-add__spacer" aria-hidden="true" />
         <span class="tl-rail" aria-hidden="true"><span class="tl-add__dot" /></span>
         <button type="button" class="tl-add__button" @click="emit('add')">
-          <BaseIcon :icon="Plus" :size="16" />
+          <BaseIcon :icon="Plus" :size="18" />
           <span class="tl-add__label">{{ count === 0 ? 'Добавить первую запись' : 'Добавить запись' }}</span>
         </button>
       </li>
@@ -113,16 +134,17 @@ const count = computed(() => props.entries.length)
 
 <style scoped>
 .timeline {
-  --time-w: 5.5rem;
+  --time-w: 7rem;
+  --rail-w: 3rem;
 }
 
 .timeline__empty {
   font-family: var(--font-display);
-  font-style: italic;
-  font-size: var(--fs-subhead);
-  line-height: var(--lh-snug);
-  color: var(--sec-muted);
-  max-width: 26ch;
+  font-size: clamp(2rem, 1.5rem + 2vw, 3rem);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  color: var(--fg-muted);
+  max-width: 18ch;
   margin-bottom: var(--space-5);
 }
 
@@ -136,84 +158,57 @@ const count = computed(() => props.entries.length)
   animation-play-state: paused !important;
 }
 
-/* --- shared rail geometry for the "now" and "add" rows --- */
-.tl-now,
-.tl-add {
-  display: grid;
-  grid-template-columns: var(--time-w) 1.75rem minmax(0, 1fr);
-  align-items: start;
-  position: relative;
-}
-
 .tl-rail {
   position: relative;
   align-self: stretch;
   justify-self: center;
-  width: 1px;
+  width: 2px;
 }
 
+/* --- "now": a solid band across the whole row --- */
 .tl-now {
-  --pad: clamp(1.25rem, calc(var(--gap) * 0.07rem), 5.5rem);
+  --pad: clamp(1.25rem, calc(var(--gap) * 0.07rem), var(--pad-max, 6rem));
+  position: relative;
   padding-top: var(--pad);
-  min-height: calc(var(--pad) + 1.25rem);
 }
 
-.tl-now .tl-rail {
-  margin-top: calc(-1 * var(--pad));
-}
-
-.tl-now .tl-rail::before,
-.tl-add .tl-rail::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 1px;
-  background: var(--sec-line-strong);
+.tl-now__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 2.25rem;
+  padding: 0 var(--space-4);
+  background: var(--fill);
+  color: var(--on-fill);
+  transform-origin: left;
+  animation: now-bar 700ms var(--ease-out) 300ms both;
 }
 
 .tl-now__time {
-  color: var(--sec-accent);
-  line-height: 1.25rem;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.5rem;
+  --od-cell: 1.5rem;
+}
+
+.tl-now__label {
+  font-size: var(--fs-label);
   font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
-.tl-now__dot {
-  position: absolute;
-  left: 50%;
-  top: calc(var(--pad) + 0.625rem - 5px);
-  width: 10px;
-  height: 10px;
-  margin-left: -5px;
-  border-radius: var(--radius-full);
-  background: var(--sec-accent);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--sec-accent) 22%, transparent);
-}
-
-.tl-now__line {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  height: 1.25rem;
-  color: var(--sec-accent);
-}
-
-.tl-now__line::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: currentColor;
-  opacity: 0.55;
-  transform-origin: left;
-  animation: now-line 900ms var(--ease-out) 300ms both;
-}
-
-/* --- the add node at the end of the rail --- */
+/* --- the add node at the end of the route --- */
 .tl-add {
-  min-height: var(--tap-target-min);
+  display: grid;
+  grid-template-columns: var(--time-w) var(--rail-w) minmax(0, 1fr);
+  align-items: start;
+  position: relative;
+  min-height: 4rem;
 }
 
 .tl-add.is-alone {
-  grid-template-columns: 1.75rem minmax(0, 1fr);
+  grid-template-columns: var(--rail-w) minmax(0, 1fr);
 }
 
 .tl-add.is-alone .tl-add__spacer {
@@ -225,8 +220,16 @@ const count = computed(() => props.entries.length)
 }
 
 .tl-add .tl-rail::before {
+  content: '';
+  position: absolute;
   inset: 0 auto auto 0;
-  height: calc(var(--tap-target-min) / 2);
+  width: 2px;
+  height: 2rem;
+  background: repeating-linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--fg) 50%, transparent) 0 6px,
+    transparent 6px 12px
+  );
 }
 
 .tl-add.is-alone .tl-rail::before {
@@ -236,18 +239,20 @@ const count = computed(() => props.entries.length)
 .tl-add__dot {
   position: absolute;
   left: 50%;
-  top: calc(var(--tap-target-min) / 2 - 5px);
-  width: 10px;
-  height: 10px;
-  margin-left: -5px;
-  border-radius: var(--radius-full);
-  border: 1.5px dashed var(--sec-accent);
-  transition: transform var(--duration-base) var(--ease-out);
+  top: calc(2rem - 8px);
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  border: var(--stroke) dashed var(--hl);
+  transition:
+    transform var(--duration-base) var(--ease-out),
+    background-color var(--duration-base) var(--ease-standard);
 }
 
 .tl-add:hover .tl-add__dot {
-  transform: scale(1.5);
+  transform: scale(1.35) rotate(45deg);
   border-style: solid;
+  background: var(--fill);
 }
 
 .tl-add__button {
@@ -256,22 +261,22 @@ const count = computed(() => props.entries.length)
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: var(--tap-target-min);
+  min-height: 4rem;
   padding: 0 var(--space-1);
-  color: var(--sec-accent);
+  color: var(--hl);
   font-size: var(--fs-meta);
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-weight: 650;
 }
 
 .tl-add__label {
-  background: linear-gradient(currentColor, currentColor) left bottom / 0 1px no-repeat;
-  padding-bottom: 2px;
+  background: linear-gradient(currentColor, currentColor) left bottom / 100% 2px no-repeat;
+  padding-bottom: 3px;
   transition: background-size var(--duration-slow) var(--ease-out);
 }
 
 .tl-add__button:hover .tl-add__label {
-  background-size: 100% 1px;
+  background-position: right bottom;
+  background-size: 0 2px;
 }
 
 /* --- list transitions --- */
@@ -306,15 +311,19 @@ const count = computed(() => props.entries.length)
   transition: transform var(--duration-slow) var(--ease-out);
 }
 
-@keyframes now-line {
+@keyframes now-bar {
   from {
-    transform: scaleX(0);
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 560px) {
   .timeline {
-    --time-w: 4.5rem;
+    --time-w: 5.25rem;
+    --rail-w: 2.25rem;
   }
 }
 </style>

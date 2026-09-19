@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, Check } from 'lucide-vue-next'
+import { ArrowRight, ArrowUpRight, Check } from 'lucide-vue-next'
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -7,12 +7,13 @@ import BaseButton from '@/components/base/BaseButton.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
+import { vInview } from '@/composables/useInView'
 import { useBackButton } from '@/composables/useTelegram'
 import { useTheme } from '@/composables/useTheme'
 import { useAuthStore } from '@/stores/auth'
 import type { ThemePreference } from '@/stores/ui'
-import { statusOf, toFieldErrors, toUserMessage } from '@/utils/errors'
 import { useUiStore } from '@/stores/ui'
+import { statusOf, toFieldErrors, toUserMessage } from '@/utils/errors'
 
 const authStore = useAuthStore()
 const uiStore = useUiStore()
@@ -95,16 +96,30 @@ async function savePassword() {
     passwordBusy.value = false
   }
 }
+
+// --- sign out ---
+const signingOut = ref(false)
+
+async function signOut() {
+  signingOut.value = true
+  try {
+    await authStore.logout()
+  } finally {
+    signingOut.value = false
+    router.push({ name: 'auth' })
+  }
+}
 </script>
 
 <template>
-  <div class="profile">
+  <div class="profile env-plain">
     <div class="profile__inner">
-      <PageHeader eyebrow="Аккаунт" title="Профиль">
-        Вы вошли как <em class="profile__name">{{ authStore.user?.username }}</em>
+      <PageHeader title="Профиль">
+        Вы вошли как <strong class="profile__name">{{ authStore.user?.username }}</strong>
       </PageHeader>
 
-      <section class="block">
+      <section v-inview class="block">
+        <span class="block__rule" aria-hidden="true" />
         <header class="block__head">
           <h2 class="block__title">Оформление</h2>
           <p class="block__hint">Тема применяется сразу и запоминается на этом устройстве.</p>
@@ -128,7 +143,8 @@ async function savePassword() {
         </div>
       </section>
 
-      <section class="block">
+      <section v-inview class="block">
+        <span class="block__rule" aria-hidden="true" />
         <header class="block__head">
           <h2 class="block__title">Логин</h2>
           <p class="block__hint">Под ним вы входите в приложение.</p>
@@ -143,17 +159,18 @@ async function savePassword() {
           />
           <div class="form__footer">
             <Transition name="saved">
-              <span v-if="usernameSaved" class="saved"><BaseIcon :icon="Check" :size="16" /> Сохранено</span>
+              <span v-if="usernameSaved" class="saved"><BaseIcon :icon="Check" :size="18" /> Сохранено</span>
             </Transition>
             <BaseButton type="submit" variant="secondary" :loading="usernameBusy">
               Сохранить
-              <template #icon><BaseIcon :icon="ArrowRight" :size="16" /></template>
+              <template #icon><BaseIcon :icon="ArrowRight" :size="18" /></template>
             </BaseButton>
           </div>
         </form>
       </section>
 
-      <section class="block">
+      <section v-inview class="block">
+        <span class="block__rule" aria-hidden="true" />
         <header class="block__head">
           <h2 class="block__title">Пароль</h2>
           <p class="block__hint">Пароль нигде не показывается — только меняется.</p>
@@ -177,14 +194,28 @@ async function savePassword() {
           />
           <div class="form__footer">
             <Transition name="saved">
-              <span v-if="passwordSaved" class="saved"><BaseIcon :icon="Check" :size="16" /> Пароль обновлён</span>
+              <span v-if="passwordSaved" class="saved"><BaseIcon :icon="Check" :size="18" /> Пароль обновлён</span>
             </Transition>
             <BaseButton type="submit" variant="secondary" :loading="passwordBusy">
               Сменить пароль
-              <template #icon><BaseIcon :icon="ArrowRight" :size="16" /></template>
+              <template #icon><BaseIcon :icon="ArrowRight" :size="18" /></template>
             </BaseButton>
           </div>
         </form>
+      </section>
+
+      <section v-inview class="block">
+        <span class="block__rule" aria-hidden="true" />
+        <header class="block__head">
+          <h2 class="block__title">Выход</h2>
+          <p class="block__hint">Вы выйдете из аккаунта на этом устройстве. Данные останутся на сервере.</p>
+        </header>
+        <div class="block__body">
+          <BaseButton variant="danger" :loading="signingOut" @click="signOut">
+            Выйти из аккаунта
+            <template #icon><BaseIcon :icon="ArrowUpRight" :size="18" /></template>
+          </BaseButton>
+        </div>
       </section>
     </div>
   </div>
@@ -193,43 +224,56 @@ async function savePassword() {
 <style scoped>
 .profile {
   flex: 1;
-  background: var(--background);
 }
 
 .profile__inner {
   width: 100%;
   max-width: 62rem;
   margin: 0 auto;
-  padding: var(--space-8) var(--gutter) var(--space-9);
+  padding: var(--space-7) var(--gutter) var(--space-9);
   display: grid;
   gap: var(--space-8);
 }
 
 .profile__name {
-  font-family: var(--font-display);
-  font-style: italic;
-  color: var(--text);
+  font-weight: 750;
+  color: var(--fg);
 }
 
 .block {
+  position: relative;
   display: grid;
   gap: var(--space-5) var(--space-7);
   padding-top: var(--space-6);
-  border-top: 1px solid var(--border-strong);
+}
+
+.block__rule {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: var(--stroke);
+  background: var(--rule-strong);
+  transform-origin: left;
+  transition: transform var(--duration-draw) var(--ease-out);
+}
+
+.block[data-inview='false'] .block__rule {
+  transform: scaleX(0);
 }
 
 .block__title {
   font-family: var(--font-display);
-  font-size: var(--fs-section-title);
-  font-weight: 400;
-  line-height: var(--lh-tight);
-  margin-bottom: var(--space-2);
+  font-size: clamp(2.5rem, 2rem + 2vw, 3.5rem);
+  font-weight: 800;
+  line-height: var(--lh-display);
+  margin-bottom: var(--space-3);
 }
 
 .block__hint {
   font-size: var(--fs-meta);
-  color: var(--muted);
-  max-width: 28ch;
+  color: var(--fg-muted);
+  max-width: 30ch;
 }
 
 .form {
@@ -243,7 +287,7 @@ async function savePassword() {
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-4);
-  min-height: var(--tap-target-min);
+  min-height: 3rem;
 }
 
 .saved {
@@ -251,7 +295,7 @@ async function savePassword() {
   align-items: center;
   gap: var(--space-2);
   font-size: var(--fs-meta);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--success);
 }
 
@@ -268,37 +312,40 @@ async function savePassword() {
   transform: translateX(-8px);
 }
 
-/* Segmented control: one thumb slides between options */
+/* Segmented control: one marker slides between the options */
 .themes {
   position: relative;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   max-width: 28rem;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
+  border: var(--stroke) solid var(--fg);
 }
 
 .themes__thumb {
   position: absolute;
-  inset: 3px auto 3px 3px;
-  width: calc((100% - 6px) / 3);
-  background: var(--text);
-  border-radius: calc(var(--radius-md) - 2px);
+  inset: 0 auto 0 0;
+  width: calc(100% / 3);
+  background: var(--fill);
   transform: translateX(calc(var(--index) * 100%));
   transition: transform var(--duration-slow) var(--ease-out);
 }
 
 .themes__option {
   position: relative;
-  min-height: var(--tap-target-min);
+  min-height: 3.25rem;
+  padding: 0 var(--space-2);
   font-size: var(--fs-meta);
-  font-weight: 600;
-  color: var(--text-secondary);
+  font-weight: 650;
+  color: var(--fg-2);
   transition: color var(--duration-base) var(--ease-standard);
 }
 
+.themes__option:hover {
+  color: var(--fg);
+}
+
 .themes__option.is-active {
-  color: var(--background);
+  color: var(--on-fill);
 }
 
 @media (min-width: 900px) {

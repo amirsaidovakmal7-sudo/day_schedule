@@ -13,11 +13,10 @@ const emit = defineEmits<{ retry: [] }>()
 
 <template>
   <div class="error-state" role="alert">
-    <p class="label error-state__eyebrow">Что-то пошло не так</p>
     <p class="error-state__message">{{ message }}</p>
     <BaseButton variant="secondary" @click="emit('retry')">
       Повторить
-      <template #icon><BaseIcon :icon="ArrowRight" :size="16" /></template>
+      <template #icon><BaseIcon :icon="ArrowRight" :size="18" /></template>
     </BaseButton>
   </div>
 </template>
@@ -27,19 +26,16 @@ const emit = defineEmits<{ retry: [] }>()
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--space-3);
+  gap: var(--space-5);
   padding-block: var(--space-6);
-}
-
-.error-state__eyebrow {
-  color: var(--danger);
 }
 
 .error-state__message {
   font-family: var(--font-display);
-  font-size: var(--fs-section-title);
-  line-height: var(--lh-tight);
-  max-width: 20ch;
-  margin-bottom: var(--space-3);
+  font-size: clamp(2.5rem, 1.75rem + 3vw, 4.5rem);
+  font-weight: 800;
+  line-height: var(--lh-display);
+  max-width: 14ch;
+  text-wrap: balance;
 }
 </style>

@@ -23,7 +23,6 @@ const emit = defineEmits<{ toggle: [id: number]; remove: [id: number] }>()
 .task-list {
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--sec-line);
 }
 
 /* Enter: the space opens first, then the row's content arrives */

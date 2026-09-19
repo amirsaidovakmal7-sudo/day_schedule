@@ -67,14 +67,9 @@ async function submit() {
 </script>
 
 <template>
-  <BaseSheet
-    :open="open"
-    :eyebrow="isEdit ? 'Расписание' : '02 · Расписание'"
-    :title="isEdit ? 'Изменить запись' : 'Новая запись'"
-    @close="close"
-  >
+  <BaseSheet :open="open" :title="isEdit ? 'Изменить запись' : 'Новая запись'" @close="close">
     <form class="note-form" novalidate @submit.prevent="submit">
-      <BaseInput v-model="time" type="time" label="Время" :error="errors.time" />
+      <BaseInput v-model="time" type="time" label="Время" display :error="errors.time" />
       <BaseInput
         v-model="description"
         label="Что запланировано"
@@ -85,7 +80,7 @@ async function submit() {
       />
       <BaseButton type="submit" block :loading="submitting">
         {{ isEdit ? 'Сохранить' : 'Добавить в день' }}
-        <template #icon><BaseIcon :icon="isEdit ? Check : ArrowRight" :size="16" /></template>
+        <template #icon><BaseIcon :icon="isEdit ? Check : ArrowRight" :size="18" /></template>
       </BaseButton>
     </form>
   </BaseSheet>

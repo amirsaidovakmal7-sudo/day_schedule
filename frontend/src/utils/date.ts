@@ -24,6 +24,21 @@ export function dayParts(isoDate: string): DayParts {
   }
 }
 
+/** 1-based day of the year. */
+export function dayOfYear(isoDate: string): number {
+  const date = parseIsoDate(isoDate)
+  const start = new Date(date.getFullYear(), 0, 0)
+  return Math.round((date.getTime() - start.getTime()) / 86_400_000)
+}
+
+/** ISO 8601 week number. */
+export function isoWeek(isoDate: string): number {
+  const date = parseIsoDate(isoDate)
+  const thursday = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 3 - ((date.getDay() + 6) % 7))
+  const firstThursday = new Date(thursday.getFullYear(), 0, 4)
+  return 1 + Math.round(((thursday.getTime() - firstThursday.getTime()) / 86_400_000 - 3 + ((firstThursday.getDay() + 6) % 7)) / 7)
+}
+
 /** "2026-09" — stable key for grouping days by month. */
 export function monthKey(isoDate: string): string {
   return isoDate.slice(0, 7)

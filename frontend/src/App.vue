@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import BaseToast from '@/components/base/BaseToast.vue'
@@ -14,53 +14,21 @@ const authStore = useAuthStore()
 const showChrome = computed(() => authStore.isAuthenticated && route.name !== 'auth')
 const transitionName = computed(() => (showChrome.value ? uiStore.pageTransition : 'page-fade'))
 
-function onKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape' && uiStore.navOpen) uiStore.closeNav()
-}
-
-onMounted(() => window.addEventListener('keydown', onKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
-
+// A thin line runs across the top edge on every route change
+const lineKey = ref(0)
 watch(
   () => route.path,
-  () => uiStore.closeNav(),
-)
-
-watch(
-  () => uiStore.navOpen,
-  (open) => {
-    document.body.style.overflow = open ? 'hidden' : ''
-  },
+  () => (lineKey.value += 1),
 )
 </script>
 
 <template>
   <div class="shell" :class="{ 'is-authed': showChrome }" :data-phase="uiStore.scenePhase">
-    <template v-if="showChrome">
-      <header class="shell__topbar">
-        <button
-          type="button"
-          class="menu-btn"
-          :class="{ 'is-open': uiStore.navOpen }"
-          :aria-label="uiStore.navOpen ? 'Закрыть меню' : 'Открыть меню'"
-          :aria-expanded="uiStore.navOpen"
-          aria-controls="app-nav"
-          @click="uiStore.toggleNav()"
-        >
-          <span class="menu-btn__bar" />
-          <span class="menu-btn__bar" />
-        </button>
-        <span class="shell__topbar-title">Дневник дня</span>
-      </header>
+    <span v-if="lineKey > 0" :key="lineKey" class="route-line" aria-hidden="true" />
 
-      <Transition name="backdrop">
-        <div v-if="uiStore.navOpen" class="shell__backdrop" @click="uiStore.closeNav()" />
-      </Transition>
-
-      <aside id="app-nav" class="shell__nav" :class="{ 'is-open': uiStore.navOpen }">
-        <AppNavigation :open="uiStore.navOpen" @navigate="uiStore.closeNav()" />
-      </aside>
-    </template>
+    <aside v-if="showChrome" class="shell__nav">
+      <AppNavigation />
+    </aside>
 
     <main class="shell__content">
       <RouterView v-slot="{ Component, route: activeRoute }">
@@ -76,117 +44,48 @@ watch(
 
 <style>
 .shell {
-  --top-bg: var(--background);
-  --top-text: var(--text);
-  --top-line: var(--border);
+  --nav-bg: var(--surface);
+  --nav-fg: var(--text);
+  --nav-muted: var(--text-secondary);
+  --nav-marker: var(--accent);
+  --nav-on-marker: var(--on-accent);
 
   min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
-/* The chrome follows whichever colour environment is centred on screen */
-.shell[data-phase='ink'] {
-  --top-bg: var(--ink);
-  --top-text: var(--ink-text);
-  --top-line: var(--ink-line);
+/* The navigation takes on the colour of whatever environment is centred on screen */
+.shell[data-phase='field'] {
+  --nav-bg: var(--accent);
+  --nav-fg: var(--ink);
+  --nav-muted: rgba(13, 14, 18, 0.8);
+  --nav-marker: var(--ink);
+  --nav-on-marker: var(--paper);
 }
 
-.shell[data-phase='accent'] {
-  --top-bg: var(--accent);
-  --top-text: var(--on-accent);
-  --top-line: color-mix(in srgb, var(--on-accent) 24%, transparent);
+.shell[data-phase='board'] {
+  --nav-bg: var(--inverse-bg);
+  --nav-fg: var(--inverse-text);
+  --nav-muted: var(--inverse-muted);
+  --nav-marker: var(--inverse-time);
+  --nav-on-marker: var(--inverse-bg);
 }
 
-.shell__topbar {
-  position: sticky;
-  top: 0;
+.shell__nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 40;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  height: calc(var(--topbar-height) + var(--safe-top));
-  padding: var(--safe-top) var(--gutter) 0 calc(var(--gutter) - 0.75rem);
-  background: var(--top-bg);
-  color: var(--top-text);
-  border-bottom: 1px solid var(--top-line);
+  background: var(--nav-bg);
+  color: var(--nav-fg);
+  border-top: var(--stroke) solid var(--nav-fg);
+  padding-bottom: var(--safe-bottom);
   transition:
     background-color var(--duration-slow) var(--ease-standard),
     color var(--duration-slow) var(--ease-standard),
     border-color var(--duration-slow) var(--ease-standard);
-}
-
-.shell__topbar-title {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: var(--fs-subhead);
-  font-weight: 400;
-}
-
-/* Two bars that cross into an X */
-.menu-btn {
-  position: relative;
-  width: var(--tap-target-min);
-  height: var(--tap-target-min);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
-.menu-btn__bar {
-  display: block;
-  width: 22px;
-  height: 1.5px;
-  background: currentColor;
-  transition:
-    transform var(--duration-slow) var(--ease-out),
-    width var(--duration-base) var(--ease-out);
-}
-
-.menu-btn:hover .menu-btn__bar:last-child {
-  width: 14px;
-}
-
-.menu-btn.is-open .menu-btn__bar:first-child {
-  transform: translateY(3.75px) rotate(45deg);
-}
-
-.menu-btn.is-open .menu-btn__bar:last-child {
-  width: 22px;
-  transform: translateY(-3.75px) rotate(-45deg);
-}
-
-.shell__backdrop {
-  position: fixed;
-  inset: calc(var(--topbar-height) + var(--safe-top)) 0 0 0;
-  background: var(--overlay);
-  z-index: 45;
-}
-
-.shell__nav {
-  --nav-text: var(--text);
-  --nav-muted: var(--text-secondary);
-  --nav-line: var(--border);
-  --nav-accent: var(--accent);
-
-  position: fixed;
-  top: calc(var(--topbar-height) + var(--safe-top));
-  left: 0;
-  bottom: 0;
-  width: min(86vw, 22rem);
-  background: var(--surface);
-  border-right: 1px solid var(--border);
-  transform: translateX(-100%);
-  transition: transform var(--duration-slow) var(--ease-out);
-  z-index: 50;
-  overflow-y: auto;
-}
-
-.shell__nav.is-open {
-  transform: translateX(0);
-  box-shadow: var(--shadow-overlay);
 }
 
 .shell__content {
@@ -196,63 +95,63 @@ watch(
   min-width: 0;
 }
 
+.shell.is-authed .shell__content {
+  padding-bottom: calc(var(--tabbar-height) + var(--safe-bottom));
+}
+
 @media (min-width: 1024px) {
   .shell.is-authed {
     flex-direction: row;
   }
 
-  .shell__topbar,
-  .shell__backdrop {
-    display: none;
-  }
-
   .shell__nav {
     position: sticky;
     top: 0;
+    left: auto;
+    right: auto;
+    bottom: auto;
     height: 100vh;
     width: var(--rail-width);
     flex-shrink: 0;
-    transform: none;
-    box-shadow: none;
-    background: var(--nav-bg, var(--surface));
-    border-right-color: var(--nav-line);
-    transition:
-      background-color var(--duration-slow) var(--ease-standard),
-      border-color var(--duration-slow) var(--ease-standard);
+    border-top: none;
+    border-right: var(--stroke) solid var(--nav-fg);
+    padding-bottom: 0;
   }
 
-  .shell.is-authed[data-phase='paper'] .shell__nav {
-    --nav-bg: var(--surface);
-  }
-
-  .shell[data-phase='ink'] .shell__nav {
-    --nav-bg: var(--ink);
-    --nav-text: var(--ink-text);
-    --nav-muted: var(--ink-muted);
-    --nav-line: var(--ink-line);
-    --nav-accent: var(--ink-accent);
-  }
-
-  .shell[data-phase='accent'] .shell__nav {
-    --nav-bg: var(--accent);
-    --nav-text: var(--on-accent);
-    --nav-muted: color-mix(in srgb, var(--on-accent) 72%, transparent);
-    --nav-line: color-mix(in srgb, var(--on-accent) 26%, transparent);
-    --nav-accent: var(--on-accent);
+  .shell.is-authed .shell__content {
+    padding-bottom: 0;
   }
 }
 
-.backdrop-enter-active,
-.backdrop-leave-active {
-  transition: opacity var(--duration-base) var(--ease-standard);
+.route-line {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  z-index: 90;
+  background: var(--nav-fg);
+  transform-origin: left;
+  pointer-events: none;
+  animation: route-run 520ms var(--ease-out) both;
 }
 
-.backdrop-enter-from,
-.backdrop-leave-to {
-  opacity: 0;
+@keyframes route-run {
+  0% {
+    transform: scaleX(0);
+    opacity: 1;
+  }
+  70% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
 }
 
-/* One navigation language: deeper enters from the right, shallower from the left */
+/* One navigation language: deeper enters from below-right, shallower from above-left, same level crossfades */
 .page-fade-enter-active,
 .page-fade-leave-active {
   transition: opacity var(--duration-fast) linear;
@@ -277,12 +176,12 @@ watch(
 
 .page-forward-enter-from {
   opacity: 0;
-  transform: translateX(28px);
+  transform: translate(24px, 12px);
 }
 
 .page-back-enter-from {
   opacity: 0;
-  transform: translateX(-28px);
+  transform: translate(-24px, -12px);
 }
 
 .page-forward-leave-to,

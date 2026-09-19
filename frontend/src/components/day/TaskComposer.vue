@@ -48,8 +48,9 @@ async function submit() {
     @submit.prevent="submit"
     @animationend="shaking = false"
   >
+    <span class="composer__wash" aria-hidden="true" />
     <label class="composer__icon" for="task-composer">
-      <BaseIcon :icon="Plus" :size="20" />
+      <span class="composer__plus"><BaseIcon :icon="Plus" :size="18" /></span>
       <span class="sr-only">Новая задача</span>
     </label>
     <input
@@ -65,8 +66,8 @@ async function submit() {
       :disabled="submitting"
     />
     <button type="submit" class="composer__submit" :disabled="submitting || !title.trim()" aria-label="Добавить задачу">
-      <span class="composer__hint label">Enter</span>
-      <BaseIcon :icon="CornerDownLeft" :size="18" />
+      <kbd class="composer__hint">Enter</kbd>
+      <BaseIcon :icon="CornerDownLeft" :size="20" />
     </button>
     <span class="composer__line" aria-hidden="true" />
   </form>
@@ -77,41 +78,79 @@ async function submit() {
   position: relative;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  min-height: 3.75rem;
-  border-bottom: 1px solid var(--sec-line-strong);
+  gap: var(--space-3);
+  min-height: 4.5rem;
+  border-bottom: var(--stroke) solid var(--rule-strong);
+}
+
+.composer__wash {
+  position: absolute;
+  inset: 0;
+  background: var(--tint);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--duration-slow) var(--ease-out);
+  pointer-events: none;
+}
+
+.composer:focus-within .composer__wash {
+  transform: scaleX(1);
 }
 
 .composer__icon {
+  position: relative;
   width: var(--tap-target-min);
   height: var(--tap-target-min);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: var(--sec-accent);
   cursor: text;
-  transition: transform var(--duration-base) var(--ease-out);
 }
 
-.composer:focus-within .composer__icon {
+.composer__plus {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--stroke) dashed var(--fg);
+  color: var(--fg);
+  transition:
+    transform var(--duration-slow) var(--ease-out),
+    background-color var(--duration-base) var(--ease-standard),
+    color var(--duration-base) var(--ease-standard),
+    border-color var(--duration-base) var(--ease-standard);
+}
+
+.composer:hover .composer__plus {
+  border-color: var(--hl);
+  color: var(--hl);
+}
+
+.composer:focus-within .composer__plus {
   transform: rotate(90deg);
+  border-style: solid;
+  border-color: var(--fill);
+  background: var(--fill);
+  color: var(--on-fill);
 }
 
 .composer__input {
+  position: relative;
   flex: 1;
   min-width: 0;
   min-height: var(--tap-target-min);
   border: none;
   background: transparent;
   font-size: var(--fs-task);
-  font-weight: 500;
-  color: var(--sec-text);
+  font-weight: 550;
+  color: var(--fg);
 }
 
 .composer__input::placeholder {
-  color: var(--sec-muted);
-  font-weight: 400;
+  color: var(--fg-muted);
+  font-weight: 450;
 }
 
 .composer__input:focus-visible {
@@ -119,14 +158,15 @@ async function submit() {
 }
 
 .composer__submit {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-2);
   min-height: var(--tap-target-min);
-  padding: 0 var(--space-2);
-  color: var(--sec-accent);
+  padding: 0 var(--space-3);
+  color: var(--hl);
   opacity: 0;
-  transform: translateX(8px);
+  transform: translateX(10px);
   pointer-events: none;
   transition:
     opacity var(--duration-base) var(--ease-standard),
@@ -141,7 +181,11 @@ async function submit() {
 
 .composer__hint {
   display: none;
-  color: var(--sec-muted);
+  padding: 0.125rem 0.5rem;
+  border: 1px solid currentColor;
+  font-family: var(--font-ui);
+  font-size: var(--fs-caption);
+  font-weight: 650;
 }
 
 @media (hover: hover) and (min-width: 900px) {
@@ -154,9 +198,9 @@ async function submit() {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -1px;
-  height: 2px;
-  background: var(--sec-accent);
+  bottom: calc(var(--stroke) * -1);
+  height: 5px;
+  background: var(--fill);
   transform: scaleX(0);
   transform-origin: left;
   transition: transform var(--duration-slow) var(--ease-out);
@@ -171,7 +215,7 @@ async function submit() {
 }
 
 .composer.is-shaking {
-  animation: composer-shake 320ms var(--ease-out);
+  animation: composer-shake 340ms var(--ease-out);
 }
 
 @keyframes composer-busy {
@@ -189,10 +233,10 @@ async function submit() {
     transform: translateX(0);
   }
   25% {
-    transform: translateX(-5px);
+    transform: translateX(-6px);
   }
   55% {
-    transform: translateX(4px);
+    transform: translateX(5px);
   }
   80% {
     transform: translateX(-2px);

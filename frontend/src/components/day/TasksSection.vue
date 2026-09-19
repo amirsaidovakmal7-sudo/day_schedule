@@ -1,41 +1,35 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import OdometerNumber from '@/components/base/OdometerNumber.vue'
+import ProgressTicks from '@/components/base/ProgressTicks.vue'
 import DaySection from '@/components/day/DaySection.vue'
 import TaskComposer from '@/components/day/TaskComposer.vue'
 import TaskList from '@/components/day/TaskList.vue'
 import type { Task } from '@/types/api'
 
 const props = withDefaults(
-  defineProps<{
-    tasks: Task[]
-    editable: boolean
-    accent?: 'primary' | 'secondary'
-    tone?: 'paper' | 'alt'
-  }>(),
-  { accent: 'primary', tone: 'paper' },
+  defineProps<{ tasks: Task[]; editable: boolean; env?: 'plain' | 'alt' }>(),
+  { env: 'plain' },
 )
 
 const emit = defineEmits<{ toggle: [id: number]; remove: [id: number] }>()
 
 const done = computed(() => props.tasks.filter((t) => t.completed).length)
 const total = computed(() => props.tasks.length)
-const ratio = computed(() => (total.value ? done.value / total.value : 0))
 const allDone = computed(() => total.value > 0 && done.value === total.value)
 </script>
 
 <template>
-  <DaySection index="01" title="Задачи" :tone="tone" :accent="accent">
+  <DaySection title="Задачи" :env="env" layout="side">
     <template #meta>
-      <div v-if="total > 0" class="tasks-meta">
-        <p class="tasks-meta__count tnum">
-          <span class="tasks-meta__done">{{ done }}</span>
-          <span class="tasks-meta__total"> / {{ total }}</span>
+      <div v-if="total > 0" class="tm">
+        <p class="tm__count tnum">
+          <span class="tm__done" style="--od-cell: 0.8em"><OdometerNumber :value="done" :spin="false" /></span>
+          <span class="tm__total">/{{ total }}</span>
         </p>
-        <p class="tasks-meta__caption">{{ allDone ? 'Всё сделано' : 'выполнено' }}</p>
-        <div class="tasks-meta__bar" aria-hidden="true">
-          <span class="tasks-meta__fill" :class="{ 'is-complete': allDone }" :style="{ transform: `scaleX(${ratio})` }" />
-        </div>
+        <ProgressTicks :done="done" :total="total" />
+        <p class="tm__caption">{{ allDone ? 'Всё сделано' : 'выполнено' }}</p>
       </div>
     </template>
 
@@ -49,54 +43,43 @@ const allDone = computed(() => total.value > 0 && done.value === total.value)
 </template>
 
 <style scoped>
-.tasks-meta {
+.tm {
   display: grid;
-  gap: var(--space-1);
-  max-width: 14rem;
+  gap: var(--space-3);
+  max-width: 16rem;
 }
 
-.tasks-meta__count {
+.tm__count {
+  display: flex;
+  align-items: baseline;
+  gap: 0.15em;
   font-family: var(--font-display);
-  font-size: var(--fs-page-title);
-  font-weight: 300;
-  line-height: 1;
-  color: var(--sec-text);
+  font-size: clamp(3.5rem, 2.5rem + 3vw, 5.5rem);
+  font-weight: 800;
+  line-height: 0.8;
 }
 
-.tasks-meta__done {
-  color: var(--sec-accent);
+.tm__done {
+  color: var(--hl);
 }
 
-.tasks-meta__total {
-  color: var(--sec-muted);
+.tm__total {
+  color: var(--fg-muted);
 }
 
-.tasks-meta__caption {
+.tm__caption {
   font-size: var(--fs-meta);
-}
-
-.tasks-meta__bar {
-  height: 2px;
-  margin-top: var(--space-3);
-  background: var(--sec-line);
-  overflow: hidden;
-}
-
-.tasks-meta__fill {
-  display: block;
-  height: 100%;
-  background: var(--sec-accent);
-  transform-origin: left;
-  transition: transform var(--duration-reveal) var(--ease-out);
+  font-weight: 600;
+  color: var(--fg-2);
 }
 
 .tasks-empty {
   font-family: var(--font-display);
-  font-style: italic;
-  font-size: var(--fs-subhead);
-  line-height: var(--lh-snug);
-  color: var(--sec-muted);
-  padding-bottom: var(--space-4);
-  max-width: 24ch;
+  font-size: clamp(2rem, 1.5rem + 2vw, 3rem);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  color: var(--fg-muted);
+  padding-bottom: var(--space-5);
+  max-width: 18ch;
 }
 </style>

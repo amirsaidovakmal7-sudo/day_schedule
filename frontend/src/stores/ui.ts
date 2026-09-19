@@ -4,6 +4,9 @@ import { ref, watch } from 'vue'
 export type ThemePreference = 'system' | 'light' | 'dark'
 export type ColorScheme = 'light' | 'dark'
 export type ToastTone = 'default' | 'danger'
+/** which colour environment is centred on screen; the navigation follows it */
+export type ScenePhase = 'plain' | 'field' | 'board'
+export type PageTransition = 'page-forward' | 'page-back' | 'page-fade'
 
 const THEME_STORAGE_KEY = 'day-diary:theme'
 let toastTimer: ReturnType<typeof setTimeout> | undefined
@@ -27,26 +30,14 @@ export const useUiStore = defineStore('ui', () => {
   const toastMessage = ref<string | null>(null)
   const toastTone = ref<ToastTone>('default')
 
-  const pageTransition = ref<'page-forward' | 'page-back' | 'page-fade'>('page-fade')
-  function setPageTransition(name: 'page-forward' | 'page-back' | 'page-fade') {
+  const pageTransition = ref<PageTransition>('page-fade')
+  function setPageTransition(name: PageTransition) {
     pageTransition.value = name
   }
 
-  /** which colour environment is centred on screen while scrolling Today */
-  const scenePhase = ref<'paper' | 'ink' | 'accent'>('paper')
-  function setScenePhase(phase: 'paper' | 'ink' | 'accent') {
+  const scenePhase = ref<ScenePhase>('plain')
+  function setScenePhase(phase: ScenePhase) {
     scenePhase.value = phase
-  }
-
-  const navOpen = ref(false)
-  function openNav() {
-    navOpen.value = true
-  }
-  function closeNav() {
-    navOpen.value = false
-  }
-  function toggleNav() {
-    navOpen.value = !navOpen.value
   }
 
   function showToast(message: string, tone: ToastTone = 'default') {
@@ -85,9 +76,5 @@ export const useUiStore = defineStore('ui', () => {
     setPageTransition,
     scenePhase,
     setScenePhase,
-    navOpen,
-    openNav,
-    closeNav,
-    toggleNav,
   }
 })

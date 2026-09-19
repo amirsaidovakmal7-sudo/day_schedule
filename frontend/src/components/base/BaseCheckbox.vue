@@ -13,17 +13,9 @@ const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
     :disabled="disabled"
     @click="emit('update:modelValue', !modelValue)"
   >
-    <svg viewBox="0 0 24 24" class="check__box" fill="none" aria-hidden="true">
-      <rect x="3.5" y="3.5" width="17" height="17" class="check__bg" />
-      <path
-        d="M7.4 12.4L10.4 15.4L16.6 8.8"
-        class="check__mark"
-        stroke="currentColor"
-        stroke-width="2.2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        pathLength="1"
-      />
+    <svg viewBox="0 0 28 28" class="check__box" fill="none" aria-hidden="true">
+      <rect x="2" y="2" width="24" height="24" class="check__bg" />
+      <path d="M8 14.4L12.2 18.6L20.2 9.6" class="check__mark" pathLength="1" />
     </svg>
   </button>
 </template>
@@ -36,7 +28,6 @@ const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: var(--sec-on-accent, var(--on-accent));
 }
 
 .check.is-static {
@@ -44,51 +35,46 @@ const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
 }
 
 .check__box {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   transition: transform var(--duration-fast) var(--ease-standard);
 }
 
 .check:active:not(:disabled) .check__box {
-  transform: scale(0.9);
+  transform: scale(0.88);
 }
 
-/* Square outline morphs into a filled rounded form when checked */
 .check__bg {
-  rx: 3px;
   fill: transparent;
-  stroke: var(--sec-muted, var(--muted));
-  stroke-width: 1.5;
+  stroke: var(--fg);
+  stroke-width: 2;
   transition:
-    rx var(--duration-slow) var(--ease-out),
     fill var(--duration-base) var(--ease-standard),
     stroke var(--duration-base) var(--ease-standard);
 }
 
 .check:hover:not(:disabled):not(.is-checked) .check__bg {
-  stroke: var(--sec-accent, var(--accent));
+  fill: var(--tint);
+  stroke: var(--hl);
 }
 
 .check__mark {
+  stroke: var(--on-fill);
+  stroke-width: 3;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
   transition: stroke-dashoffset var(--duration-base) var(--ease-in-out);
 }
 
 .check.is-checked .check__bg {
-  rx: 9px;
-  fill: var(--sec-accent, var(--accent));
-  stroke: var(--sec-accent, var(--accent));
+  fill: var(--fill);
+  stroke: var(--fill);
 }
 
 .check.is-checked .check__mark {
   stroke-dashoffset: 0;
-  transition-delay: 90ms;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .check__bg {
-    transition: none;
-  }
+  transition-delay: 100ms;
 }
 </style>

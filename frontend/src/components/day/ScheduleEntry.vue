@@ -9,11 +9,15 @@ import { formatTime } from '@/utils/date'
 const props = defineProps<{
   entry: ScheduleEntry
   editable: boolean
-  /** minutes since the previous item — drives the vertical breathing room */
+  /** minutes since the previous item; drives the vertical breathing room */
   gap: number
   index: number
   isFirst: boolean
   isLast: boolean
+  /** the moment has already happened (or the day is not live) */
+  reached: boolean
+  /** live day: entries still ahead are dimmed */
+  live: boolean
 }>()
 const emit = defineEmits<{ edit: [entry: ScheduleEntry]; remove: [id: number] }>()
 
@@ -36,7 +40,13 @@ onBeforeUnmount(() => clearTimeout(resetTimer))
 <template>
   <li
     class="entry"
-    :class="{ 'is-first': isFirst, 'is-last': isLast, 'is-editable': editable }"
+    :class="{
+      'is-first': isFirst,
+      'is-last': isLast,
+      'is-editable': editable,
+      'is-reached': reached,
+      'is-ahead': live && !reached,
+    }"
     :style="{ '--gap': gap, '--i': index }"
   >
     <div class="entry__clip">
@@ -61,7 +71,7 @@ onBeforeUnmount(() => clearTimeout(resetTimer))
               :icon="Trash2"
               :label="armed ? 'Подтвердить удаление' : 'Удалить запись'"
               tone="danger"
-              :size="17"
+              :size="19"
               :class="{ 'is-armed': armed }"
               @click="onDelete"
             />
@@ -74,67 +84,80 @@ onBeforeUnmount(() => clearTimeout(resetTimer))
 
 <style scoped>
 .entry {
-  --time-h: 2.5rem;
+  --time-h: 3rem;
   display: grid;
   grid-template-rows: 1fr;
-  color: var(--sec-text);
-  /* base delay: the initial batch cascades, later entries start immediately */
-  --base: calc(var(--i, 0) * 110ms);
-}
-
-.entry__clip {
-  min-height: 0;
-}
-
-.entry {
-  --pad: clamp(1.25rem, calc(var(--gap) * 0.07rem), 5.5rem);
+  color: var(--fg);
+  /* the first batch cascades; later entries start at once */
+  --base: calc(var(--i, 0) * 120ms);
+  --pad: clamp(1.5rem, calc(var(--gap) * 0.07rem), var(--pad-max, 6rem));
 }
 
 .entry.is-first {
   --pad: 0px;
 }
 
+.entry__clip {
+  min-height: 0;
+}
+
 .entry__row {
   position: relative;
   display: grid;
-  grid-template-columns: var(--time-w, 5.5rem) 1.75rem minmax(0, 1fr);
+  grid-template-columns: var(--time-w, 7rem) var(--rail-w, 3rem) minmax(0, 1fr);
   align-items: start;
   padding-top: var(--pad);
-  min-height: calc(var(--time-h) + var(--pad) + 1.5rem);
+  min-height: calc(var(--time-h) + var(--pad) + 1.25rem);
 }
 
-/* Time: large serif numerals, wiped in from the left */
+/* Time wipes in from the left; the description rises out of a mask — two motion families */
 .entry__time {
   font-family: var(--font-display);
-  font-size: clamp(1.625rem, 1.3rem + 1.2vw, 2.25rem);
-  font-weight: 300;
+  font-size: var(--fs-time);
+  font-weight: 800;
   line-height: var(--time-h);
-  color: var(--sec-accent);
+  letter-spacing: -0.005em;
+  color: var(--time);
   animation: time-wipe 620ms var(--ease-out) both;
   animation-delay: calc(var(--base) + 240ms);
-  transition: color var(--duration-fast) var(--ease-standard);
+  transition:
+    color var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-slow) var(--ease-standard);
+}
+
+.entry.is-ahead .entry__time {
+  color: var(--fg);
+  opacity: 0.62;
 }
 
 .entry__rail {
   position: relative;
   align-self: stretch;
   justify-self: center;
-  width: 1px;
+  width: 2px;
   margin-top: calc(-1 * var(--pad));
 }
 
-/* The rail segment: draws downward from the previous dot */
+/* The route: a solid line where the day has been, dashes where it is still to come */
 .entry__rail::before {
   content: '';
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
-  width: 1px;
-  background: var(--sec-line-strong);
+  width: 2px;
+  background: var(--time);
   transform-origin: top;
   animation: rail-draw 700ms var(--ease-out) both;
   animation-delay: var(--base);
+}
+
+.entry.is-ahead .entry__rail::before {
+  background: repeating-linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--fg) 50%, transparent) 0 6px,
+    transparent 6px 12px
+  );
 }
 
 .entry.is-first .entry__rail::before {
@@ -144,30 +167,34 @@ onBeforeUnmount(() => clearTimeout(resetTimer))
 .entry.is-last .entry__rail::before {
   bottom: auto;
   height: calc(var(--pad) + var(--time-h) / 2 + var(--space-5));
-  background: linear-gradient(var(--sec-line-strong) 70%, transparent);
+  mask-image: linear-gradient(#000 65%, transparent);
 }
 
 .entry.is-first.is-last .entry__rail::before {
   top: calc(var(--time-h) / 2);
   height: var(--space-6);
-  background: linear-gradient(var(--sec-line-strong) 30%, transparent);
 }
 
+/* Stops are squares: filled once reached, hollow while ahead */
 .entry__dot {
   position: absolute;
   left: 50%;
-  top: calc(var(--pad) + var(--time-h) / 2 - 5px);
-  width: 10px;
-  height: 10px;
-  margin-left: -5px;
-  border-radius: var(--radius-full);
-  background: var(--sec-bg, var(--ink));
-  border: 2px solid var(--sec-accent);
-  animation: dot-pop 520ms var(--ease-pop) both;
+  top: calc(var(--pad) + var(--time-h) / 2 - 8px);
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  border: var(--stroke) solid var(--time);
+  background: var(--time);
+  animation: dot-turn 560ms var(--ease-out) both;
   animation-delay: calc(var(--base) + 160ms);
   transition:
     transform var(--duration-base) var(--ease-out),
     background-color var(--duration-fast) var(--ease-standard);
+}
+
+.entry.is-ahead .entry__dot {
+  border-color: var(--fg);
+  background: var(--bg);
 }
 
 .entry__body {
@@ -175,39 +202,46 @@ onBeforeUnmount(() => clearTimeout(resetTimer))
   align-items: flex-start;
   gap: var(--space-2);
   min-width: 0;
-  padding-top: calc((var(--time-h) - 1.5rem) / 2);
+  padding-top: calc((var(--time-h) - 1.75rem) / 2);
 }
 
 .entry__text {
   flex: 1;
   min-width: 0;
-  min-height: 1.5rem;
+  min-height: 1.75rem;
   padding: 0;
+  overflow: hidden;
   text-align: left;
   font-size: var(--fs-task);
-  line-height: 1.5rem;
-  font-weight: 400;
-  color: var(--sec-text);
+  line-height: 1.75rem;
+  font-weight: 550;
+  color: var(--fg);
   overflow-wrap: anywhere;
-  animation: text-reveal 700ms var(--ease-out) both;
-  animation-delay: calc(var(--base) + 380ms);
+  transition: color var(--duration-slow) var(--ease-standard);
+}
+
+.entry.is-ahead .entry__text {
+  color: var(--fg-2);
+  font-weight: 500;
 }
 
 .entry__text-inner {
   display: inline-block;
   transition: transform var(--duration-base) var(--ease-out);
+  animation: text-rise 700ms var(--ease-out) both;
+  animation-delay: calc(var(--base) + 380ms);
 }
 
 .entry__actions {
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  margin: calc((var(--time-h) - var(--tap-target-min)) / 2 - 0.75rem) calc(var(--space-2) * -1) 0 0;
+  margin: calc((var(--time-h) - var(--tap-target-min)) / 2 - 0.875rem) calc(var(--space-2) * -1) 0 0;
 }
 
 .entry__confirm {
-  font-size: var(--fs-meta);
-  font-weight: 600;
+  font-size: var(--fs-label);
+  font-weight: 700;
   color: var(--danger);
   opacity: 0;
   transform: translateX(6px);
@@ -224,7 +258,7 @@ onBeforeUnmount(() => clearTimeout(resetTimer))
 @media (hover: hover) {
   .entry__actions {
     opacity: 0;
-    transform: translateX(10px);
+    transform: translateX(12px);
     transition:
       opacity var(--duration-fast) var(--ease-standard),
       transform var(--duration-base) var(--ease-out);
@@ -239,16 +273,16 @@ onBeforeUnmount(() => clearTimeout(resetTimer))
 }
 
 .entry.is-editable .entry__row:hover .entry__time {
-  color: var(--sec-text);
+  color: var(--fg);
+  opacity: 1;
 }
 
 .entry.is-editable .entry__row:hover .entry__dot {
-  transform: scale(1.5);
-  background: var(--sec-accent);
+  transform: scale(1.35) rotate(45deg);
 }
 
 .entry.is-editable .entry__row:hover .entry__text-inner {
-  transform: translateX(4px);
+  transform: translateX(6px);
 }
 
 @keyframes rail-draw {
@@ -257,9 +291,9 @@ onBeforeUnmount(() => clearTimeout(resetTimer))
   }
 }
 
-@keyframes dot-pop {
+@keyframes dot-turn {
   from {
-    transform: scale(0);
+    transform: scale(0) rotate(90deg);
   }
 }
 
@@ -273,14 +307,9 @@ onBeforeUnmount(() => clearTimeout(resetTimer))
   }
 }
 
-@keyframes text-reveal {
+@keyframes text-rise {
   from {
-    clip-path: inset(0 100% 0 0);
-    opacity: 0;
-  }
-  to {
-    clip-path: inset(0 0 0 0);
-    opacity: 1;
+    transform: translateY(110%);
   }
 }
 </style>

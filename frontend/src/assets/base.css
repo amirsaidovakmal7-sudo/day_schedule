@@ -7,6 +7,8 @@
 html {
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--text) 45%, transparent) transparent;
 }
 
 body {
@@ -17,8 +19,8 @@ body {
   font-family: var(--font-ui);
   font-size: var(--fs-body);
   line-height: var(--lh-normal);
-  font-feature-settings: 'tnum' 0;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   overscroll-behavior-y: none;
   transition: background-color var(--duration-slow) var(--ease-standard);
 }
@@ -73,9 +75,14 @@ ol {
   list-style: none;
 }
 
+input,
+textarea {
+  caret-color: var(--hl, var(--accent-ink));
+}
+
 ::selection {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--fill, var(--accent));
+  color: var(--on-fill, var(--on-accent));
 }
 
 :focus {
@@ -83,9 +90,8 @@ ol {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 3px solid var(--hl, var(--accent-ink));
   outline-offset: 3px;
-  border-radius: var(--radius-sm);
 }
 
 .sr-only {
@@ -100,17 +106,15 @@ ol {
   border: 0;
 }
 
-/* Small editorial label, used everywhere for eyebrows and metadata */
 .label {
   font-family: var(--font-ui);
   font-size: var(--fs-label);
-  font-weight: 600;
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
+  font-weight: 650;
+  letter-spacing: 0.02em;
 }
 
 .tnum {
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -130,59 +134,81 @@ ol {
 }
 
 /*
-  Ink environment: remaps the semantic tokens so any block (auth art, About
-  demos, schedule) can adopt the deep-pine look without special-casing.
+  Environments. Every block that owns a background declares one of these, and
+  every component reads only the semantic names below, so the same task row,
+  button or field works on paper, on a colour field and on the board.
+
+    --bg / --fg / --fg-2 / --fg-muted   ground and text
+    --rule / --rule-strong              hairline and heavy line
+    --hl                                emphasis for text and lines
+    --time                              colour of times and dates
+    --fill / --on-fill                  solid marker fill and its text
+    --tint                              soft hover wash
+    --btn-hover-bg / --btn-hover-fg     primary button hover
 */
-.env-ink {
-  --background: var(--ink);
-  --text: var(--ink-text);
-  --text-secondary: var(--ink-text);
-  --muted: var(--ink-muted);
-  --border: var(--ink-line);
-  --border-strong: color-mix(in srgb, var(--ink-text) 30%, transparent);
-  --accent: var(--ink-accent);
-  --on-accent: var(--ink);
-
-  --sec-bg: var(--ink);
-  --sec-text: var(--ink-text);
-  --sec-text-2: var(--ink-text);
-  --sec-muted: var(--ink-muted);
-  --sec-line: var(--ink-line);
-  --sec-line-strong: color-mix(in srgb, var(--ink-text) 30%, transparent);
-  --sec-accent: var(--ink-accent);
-  --sec-on-accent: var(--ink);
-
-  background: var(--ink);
-  color: var(--ink-text);
+:root,
+.env-plain {
+  --bg: var(--background);
+  --fg: var(--text);
+  --fg-2: var(--text-secondary);
+  --fg-muted: var(--muted);
+  --rule: var(--line);
+  --rule-strong: var(--text);
+  --hl: var(--accent-ink);
+  --time: var(--accent-ink);
+  --fill: var(--accent);
+  --on-fill: var(--on-accent);
+  --tint: var(--accent-soft);
+  --btn-hover-bg: var(--accent);
+  --btn-hover-fg: var(--on-accent);
 }
 
-.env-paper {
-  background: var(--background);
-  color: var(--text);
-  --sec-bg: var(--background);
-  --sec-text: var(--text);
-  --sec-text-2: var(--text-secondary);
-  --sec-muted: var(--muted);
-  --sec-line: var(--border);
-  --sec-line-strong: var(--border-strong);
-  --sec-accent: var(--accent);
-  --sec-on-accent: var(--on-accent);
+.env-plain {
+  background: var(--bg);
+  color: var(--fg);
 }
 
-/* History flavour of paper: recessed background, pine accent */
-.env-archive {
-  --accent: var(--accent-secondary);
-  --on-accent: var(--on-secondary);
+.env-alt {
+  --bg: var(--background-alt);
+  background: var(--bg);
+  color: var(--fg);
+}
 
-  --sec-bg: var(--background-alt);
-  --sec-text: var(--text);
-  --sec-text-2: var(--text-secondary);
-  --sec-muted: var(--muted);
-  --sec-line: var(--border);
-  --sec-line-strong: var(--border-strong);
-  --sec-accent: var(--accent-secondary);
-  --sec-on-accent: var(--on-secondary);
+/* The orange field: black type, black markers */
+.env-field {
+  --bg: var(--accent);
+  --fg: var(--ink);
+  --fg-2: rgba(13, 14, 18, 0.88);
+  --fg-muted: rgba(13, 14, 18, 0.76);
+  --rule: rgba(13, 14, 18, 0.34);
+  --rule-strong: var(--ink);
+  --hl: var(--ink);
+  --time: var(--ink);
+  --fill: var(--ink);
+  --on-fill: var(--paper);
+  --tint: rgba(13, 14, 18, 0.1);
+  --btn-hover-bg: var(--paper);
+  --btn-hover-fg: var(--ink);
 
-  background: var(--background-alt);
-  color: var(--text);
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.env-board {
+  --bg: var(--inverse-bg);
+  --fg: var(--inverse-text);
+  --fg-2: color-mix(in srgb, var(--inverse-text) 88%, transparent);
+  --fg-muted: var(--inverse-muted);
+  --rule: var(--inverse-line);
+  --rule-strong: var(--inverse-text);
+  --hl: var(--inverse-time);
+  --time: var(--inverse-time);
+  --fill: var(--inverse-time);
+  --on-fill: var(--inverse-bg);
+  --tint: color-mix(in srgb, var(--inverse-time) 14%, transparent);
+  --btn-hover-bg: var(--inverse-time);
+  --btn-hover-fg: var(--inverse-bg);
+
+  background: var(--bg);
+  color: var(--fg);
 }

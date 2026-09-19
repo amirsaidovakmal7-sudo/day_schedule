@@ -10,7 +10,7 @@ withDefaults(
     tone?: 'default' | 'danger' | 'accent'
     size?: number
   }>(),
-  { tone: 'default', size: 18 },
+  { tone: 'default', size: 20 },
 )
 </script>
 
@@ -28,8 +28,7 @@ withDefaults(
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border-radius: var(--radius-md);
-  color: var(--muted);
+  color: var(--fg-muted);
   transition:
     color var(--duration-fast) var(--ease-standard),
     background-color var(--duration-fast) var(--ease-standard),
@@ -37,12 +36,12 @@ withDefaults(
 }
 
 .icon-btn:hover {
-  color: var(--text);
-  background: var(--background-alt);
+  color: var(--fg);
+  background: var(--tint);
 }
 
 .icon-btn:active {
-  transform: scale(0.92);
+  transform: scale(0.9);
 }
 
 .icon-btn--danger:hover,
@@ -52,11 +51,6 @@ withDefaults(
 }
 
 .icon-btn--accent {
-  color: var(--accent);
-}
-
-.icon-btn--accent:hover {
-  color: var(--accent);
-  background: var(--accent-soft);
+  color: var(--hl);
 }
 </style>

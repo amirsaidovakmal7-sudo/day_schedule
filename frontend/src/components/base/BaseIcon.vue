@@ -5,7 +5,7 @@ withDefaults(defineProps<{ icon: LucideIcon; size?: number }>(), { size: 20 })
 </script>
 
 <template>
-  <component :is="icon" :size="size" :stroke-width="1.75" class="base-icon" aria-hidden="true" />
+  <component :is="icon" :size="size" :stroke-width="2" stroke-linecap="square" class="base-icon" aria-hidden="true" />
 </template>
 
 <style scoped>

@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import { Eye, EyeOff } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
-
-import BaseIcon from '@/components/base/BaseIcon.vue'
 
 const props = withDefaults(
   defineProps<{
@@ -16,6 +13,8 @@ const props = withDefaults(
     autofocus?: boolean
     disabled?: boolean
     inputmode?: 'text' | 'numeric' | 'search'
+    /** larger display type, used for the time field */
+    display?: boolean
   }>(),
   { type: 'text' },
 )
@@ -47,6 +46,7 @@ watch(
       'has-error': error,
       'is-disabled': disabled,
       'is-shaking': shaking,
+      'is-display': display,
     }"
     @animationend="shaking = false"
   >
@@ -71,17 +71,17 @@ watch(
         v-if="isPassword"
         type="button"
         class="field__reveal"
-        :aria-label="revealed ? 'Скрыть пароль' : 'Показать пароль'"
         :aria-pressed="revealed"
+        :disabled="disabled"
         @click="revealed = !revealed"
       >
-        <BaseIcon :icon="revealed ? EyeOff : Eye" :size="18" />
+        {{ revealed ? 'Скрыть' : 'Показать' }}
       </button>
-      <span class="field__line" aria-hidden="true" />
+      <span class="field__bar" aria-hidden="true" />
     </div>
-    <Transition name="field-error">
-      <p v-if="error" :id="`${id}-error`" class="field__error" role="alert">{{ error }}</p>
-      <p v-else-if="hint" class="field__hint">{{ hint }}</p>
+    <Transition name="field-msg">
+      <p v-if="error" :id="`${id}-error`" class="field__msg field__msg--error" role="alert">{{ error }}</p>
+      <p v-else-if="hint" class="field__msg">{{ hint }}</p>
     </Transition>
   </div>
 </template>
@@ -90,24 +90,19 @@ watch(
 .field {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
 }
 
 .field__label {
   font-size: var(--fs-label);
-  font-weight: 600;
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-  color: var(--muted);
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--fg-2);
   transition: color var(--duration-base) var(--ease-standard);
 }
 
 .field:focus-within .field__label {
-  color: var(--accent);
-}
-
-.field.is-filled:not(:focus-within) .field__label {
-  color: var(--text-secondary);
+  color: var(--hl);
 }
 
 .field.has-error .field__label {
@@ -117,28 +112,64 @@ watch(
 .field__control {
   position: relative;
   display: flex;
+  overflow: hidden;
+  border: var(--stroke) solid color-mix(in srgb, var(--fg) 38%, transparent);
+  background: transparent;
+  transition:
+    border-color var(--duration-base) var(--ease-standard),
+    background-color var(--duration-base) var(--ease-standard);
+}
+
+.field.is-filled .field__control {
+  border-color: var(--fg);
+}
+
+.field:hover:not(.is-disabled) .field__control {
+  border-color: var(--fg);
+}
+
+.field__control:focus-within {
+  border-color: var(--hl);
+  background: var(--tint);
+}
+
+.field.has-error .field__control {
+  border-color: var(--danger);
+}
+
+.field.is-disabled .field__control {
+  border-style: dashed;
+  opacity: 0.55;
 }
 
 .field__input {
   width: 100%;
-  min-height: 3rem;
-  padding: 0;
+  min-height: 3.25rem;
+  padding: 0 var(--space-4);
   border: none;
-  border-bottom: 1px solid var(--border-strong);
   border-radius: 0;
   background: transparent;
-  color: var(--text);
-  font-size: var(--fs-subhead);
-  transition: border-color var(--duration-base) var(--ease-standard);
+  color: var(--fg);
+  font-size: 1.125rem;
+  font-weight: 500;
+}
+
+.field.is-display .field__input {
+  min-height: 4rem;
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .field__input.has-trailing {
-  padding-right: var(--tap-target-min);
+  padding-right: 6.5rem;
 }
 
 .field__input::placeholder {
-  color: var(--muted);
-  opacity: 0.7;
+  color: var(--fg-muted);
+  opacity: 0.85;
+  font-weight: 400;
 }
 
 .field__input:focus,
@@ -147,32 +178,27 @@ watch(
 }
 
 .field__input:disabled {
-  color: var(--muted);
   cursor: not-allowed;
 }
 
-.field.is-disabled .field__control {
-  opacity: 0.6;
-}
-
-/* Accent underline that draws in from the left on focus */
-.field__line {
+/* Bar that sweeps in along the bottom edge on focus */
+.field__bar {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 2px;
-  background: var(--accent);
+  height: 4px;
+  background: var(--hl);
   transform: scaleX(0);
   transform-origin: left;
   transition: transform var(--duration-slow) var(--ease-out);
 }
 
-.field__control:focus-within .field__line {
+.field__control:focus-within .field__bar {
   transform: scaleX(1);
 }
 
-.field.has-error .field__line {
+.field.has-error .field__bar {
   background: var(--danger);
   transform: scaleX(1);
 }
@@ -182,30 +208,34 @@ watch(
   right: 0;
   top: 0;
   bottom: 0;
-  width: var(--tap-target-min);
+  min-width: 6rem;
+  padding: 0 var(--space-4);
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  color: var(--muted);
+  font-size: var(--fs-label);
+  font-weight: 650;
+  color: var(--fg-2);
   transition: color var(--duration-fast) var(--ease-standard);
 }
 
-.field__reveal:hover {
-  color: var(--text);
+.field__reveal:hover:not(:disabled) {
+  color: var(--hl);
 }
 
-.field__error {
-  font-size: var(--fs-meta);
+.field__msg {
+  font-size: var(--fs-label);
+  font-weight: 500;
+  color: var(--fg-muted);
+}
+
+.field__msg--error {
   color: var(--danger);
-}
-
-.field__hint {
-  font-size: var(--fs-meta);
-  color: var(--muted);
+  font-weight: 650;
 }
 
 .field.is-shaking .field__control {
-  animation: field-shake 320ms var(--ease-out);
+  animation: field-shake 340ms var(--ease-out);
 }
 
 @keyframes field-shake {
@@ -214,25 +244,25 @@ watch(
     transform: translateX(0);
   }
   25% {
-    transform: translateX(-5px);
+    transform: translateX(-6px);
   }
   55% {
-    transform: translateX(4px);
+    transform: translateX(5px);
   }
   80% {
     transform: translateX(-2px);
   }
 }
 
-.field-error-enter-active,
-.field-error-leave-active {
+.field-msg-enter-active,
+.field-msg-leave-active {
   transition:
     opacity var(--duration-base) var(--ease-standard),
     transform var(--duration-base) var(--ease-out);
 }
 
-.field-error-enter-from,
-.field-error-leave-to {
+.field-msg-enter-from,
+.field-msg-leave-to {
   opacity: 0;
   transform: translateY(-4px);
 }

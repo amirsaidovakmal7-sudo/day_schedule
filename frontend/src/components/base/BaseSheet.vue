@@ -4,7 +4,7 @@ import { onBeforeUnmount, watch } from 'vue'
 
 import IconButton from '@/components/base/IconButton.vue'
 
-const props = defineProps<{ open: boolean; title: string; eyebrow?: string }>()
+const props = defineProps<{ open: boolean; title: string }>()
 const emit = defineEmits<{ close: [] }>()
 
 function onKeydown(event: KeyboardEvent) {
@@ -28,12 +28,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
       <div v-if="open" class="sheet-backdrop" @click="emit('close')" />
     </Transition>
     <Transition name="sheet-panel">
-      <div v-if="open" class="sheet" role="dialog" aria-modal="true" :aria-label="title">
+      <div v-if="open" class="sheet env-plain" role="dialog" aria-modal="true" :aria-label="title">
+        <span class="sheet__bar" aria-hidden="true" />
         <header class="sheet__header">
-          <div>
-            <p v-if="eyebrow" class="label sheet__eyebrow">{{ eyebrow }}</p>
-            <h2 class="sheet__title">{{ title }}</h2>
-          </div>
+          <h2 class="sheet__title">{{ title }}</h2>
           <IconButton :icon="X" label="Закрыть" @click="emit('close')" />
         </header>
         <slot />
@@ -51,18 +49,29 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 }
 
 .sheet {
+  --bg: var(--surface);
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 61;
-  background: var(--surface);
-  color: var(--text);
-  border-top: 2px solid var(--accent);
-  box-shadow: var(--shadow-overlay);
+  background: var(--bg);
+  color: var(--fg);
   padding: var(--space-5) var(--gutter) calc(var(--space-6) + var(--safe-bottom));
-  max-height: 90vh;
+  max-height: 92vh;
   overflow-y: auto;
+}
+
+/* The heavy rule that draws in across the top edge */
+.sheet__bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 6px;
+  background: var(--fill);
+  transform-origin: left;
+  animation: sheet-bar var(--duration-slow) var(--ease-out) 120ms both;
 }
 
 @media (min-width: 640px) {
@@ -71,11 +80,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
     right: auto;
     bottom: auto;
     top: 50%;
-    width: min(30rem, calc(100vw - 2rem));
+    width: min(32rem, calc(100vw - 2rem));
     translate: -50% -50%;
-    border-radius: var(--radius-lg);
-    border-top-width: 2px;
-    padding: var(--space-5) var(--space-6) var(--space-6);
+    border: var(--stroke) solid var(--fg);
+    box-shadow: var(--shadow-overlay);
+    padding: var(--space-6) var(--space-6) var(--space-6);
   }
 }
 
@@ -83,23 +92,26 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: var(--space-4);
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
 }
 
 .sheet__header :deep(.icon-btn) {
   margin: calc(var(--space-2) * -1) calc(var(--space-2) * -1) 0 0;
 }
 
-.sheet__eyebrow {
-  color: var(--accent);
-  margin-bottom: var(--space-1);
-}
-
 .sheet__title {
   font-family: var(--font-display);
-  font-size: var(--fs-section-title);
-  font-weight: 400;
-  line-height: var(--lh-tight);
+  font-size: clamp(2.5rem, 2rem + 2vw, 3.5rem);
+  font-weight: 800;
+  line-height: var(--lh-display);
+  letter-spacing: -0.005em;
+}
+
+@keyframes sheet-bar {
+  from {
+    transform: scaleX(0);
+  }
 }
 
 .sheet-backdrop-enter-active,
@@ -132,7 +144,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 @media (min-width: 640px) {
   .sheet-panel-enter-from,
   .sheet-panel-leave-to {
-    transform: translateY(14px);
+    transform: translateY(16px);
     opacity: 0;
   }
 }
